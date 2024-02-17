@@ -6,7 +6,7 @@ import openai
 from nextcord.ext import application_checks, commands
 from nextcord.ext.application_checks import has_permissions
 
-# Assuming the database functions are in the same structure
+# Assuming the database functions are correctly defined in your database module
 from database.database import fetch_assistants_by_guild, fetch_guild_membership
 
 # Set up logging
@@ -30,7 +30,7 @@ class AssistantForge(commands.Cog):
         for guild in self.bot.guilds:
             guild_membership = await fetch_guild_membership(guild.id)
             if guild_membership:
-                self.guild_max_assistants[guild.id] = guild_membership.get('max_assistants', 0)  # Ensure default is 0
+                self.guild_max_assistants[guild.id] = guild_membership.get('max_assistants', 0)
                 assistants = await fetch_assistants_by_guild(guild.id)
                 self.current_assistants_count[guild.id] = len(assistants)
             else:
@@ -46,16 +46,31 @@ class AssistantForge(commands.Cog):
     @application_checks.has_permissions(administrator=True)
     async def create_qa_assistant(self, inter: nextcord.Interaction):
         guild_id = inter.guild.id
+
+        # Initial defer to give more time for processing
+        await inter.response.defer(ephemeral=True)
+
         if guild_id not in self.guild_max_assistants or guild_id not in self.current_assistants_count:
-            await inter.response.send_message('Guild data not loaded or guild is not recognized, please try again later.')
+            await inter.followup.send('Guild data not loaded or guild is not recognized, please try again later.', ephemeral=True)
             return
 
-        if self.current_assistants_count[guild_id] < self.guild_max_assistants[guild_id]:
-            await inter.response.send_message('Creating a new assistant...')
-            # Logic for creating a new assistant goes here
-            # Remember to update self.current_assistants_count[guild_id] as necessary after creation
+        if self.current_assistants_count[guild_id] >= self.guild_max_assistants[guild_id]:
+            await inter.followup.send('Max assistants limit reached.', ephemeral=True)
+            return
+
+        # Ensure the command is used in a TextChannel
+        if isinstance(inter.channel, nextcord.TextChannel):
+            try:
+                thread = await inter.channel.create_thread(
+                    name=f"Chat with {inter.user.name}",
+                    type=nextcord.ChannelType.private_thread
+                )
+                await inter.followup.send(f"Please go to {thread.mention} to continue.", ephemeral=True)
+                await thread.send("Let’s continue….")
+            except Exception as e:
+                await inter.followup.send("An error occurred while attempting to create a thread.", ephemeral=True)
         else:
-            await inter.response.send_message('Max assistants limit reached.')
+            await inter.followup.send("This command can only be used in text channels.", ephemeral=True)
 
 def setup(bot):
     bot.add_cog(AssistantForge(bot))
