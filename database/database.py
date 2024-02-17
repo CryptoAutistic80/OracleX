@@ -19,7 +19,7 @@ async def create_tables():
         assistant_id TEXT PRIMARY KEY,
         guild_id BIGINT,
         assistant_name TEXT,
-        assistant_prompt TEXT,
+        assistant_instruction TEXT,
         assistant_thread_id TEXT,
         assistant_channel BIGINT,
         FOREIGN KEY (guild_id) REFERENCES guild_memberships(guild_id)
@@ -40,19 +40,19 @@ async def create_or_update_guild_membership(guild_id, membership_type='FREE', me
     """, guild_id, membership_type, membership_expiry_date, max_assistants)
     await conn.close()
 
-async def add_or_update_guild_assistant(assistant_id, guild_id, assistant_name, assistant_prompt, assistant_thread_id, assistant_channel):
+async def add_or_update_guild_assistant(assistant_id, guild_id, assistant_name, assistant_instruction, assistant_thread_id, assistant_channel):
     conn = await asyncpg.connect(DATABASE_URL)
     await conn.execute("""
-        INSERT INTO guild_assistants (assistant_id, guild_id, assistant_name, assistant_prompt, assistant_thread_id, assistant_channel)
+        INSERT INTO guild_assistants (assistant_id, guild_id, assistant_name, assistant_instruction, assistant_thread_id, assistant_channel)
         VALUES ($1, $2, $3, $4, $5, $6)
         ON CONFLICT (assistant_id) 
         DO UPDATE SET 
             guild_id = EXCLUDED.guild_id,
             assistant_name = EXCLUDED.assistant_name,
-            assistant_prompt = EXCLUDED.assistant_prompt, 
+            assistant_instruction = EXCLUDED.assistant_instruction, 
             assistant_thread_id = EXCLUDED.assistant_thread_id, 
             assistant_channel = EXCLUDED.assistant_channel;
-    """, assistant_id, guild_id, assistant_name, assistant_prompt, assistant_thread_id, assistant_channel)
+    """, assistant_id, guild_id, assistant_name, assistant_instruction, assistant_thread_id, assistant_channel)
     await conn.close()
 
 async def delete_guild_membership(guild_id):
@@ -92,7 +92,7 @@ async def fetch_guild_membership(guild_id):
 async def fetch_assistants_by_guild(guild_id):
     conn = await asyncpg.connect(DATABASE_URL)
     rows = await conn.fetch("""
-        SELECT assistant_id, guild_id, assistant_name, assistant_prompt, assistant_thread_id, assistant_channel
+        SELECT assistant_id, guild_id, assistant_name, assistant_instruction, assistant_thread_id, assistant_channel
         FROM guild_assistants
         WHERE guild_id = $1;
     """, guild_id)
@@ -102,7 +102,7 @@ async def fetch_assistants_by_guild(guild_id):
         "assistant_id": row["assistant_id"],
         "guild_id": row["guild_id"],
         "assistant_name": row["assistant_name"],
-        "assistant_prompt": row["assistant_prompt"],
+        "assistant_instruction": row["assistant_instruction"],
         "assistant_thread_id": row["assistant_thread_id"],
         "assistant_channel": row["assistant_channel"]
     } for row in rows]
@@ -113,7 +113,7 @@ async def fetch_assistants_by_guild(guild_id):
 async def fetch_assistant_by_id(assistant_id):
     conn = await asyncpg.connect(DATABASE_URL)
     row = await conn.fetchrow("""
-        SELECT assistant_id, guild_id, assistant_name, assistant_prompt, assistant_thread_id, assistant_channel
+        SELECT assistant_id, guild_id, assistant_name, assistant_instruction, assistant_thread_id, assistant_channel
         FROM guild_assistants
         WHERE assistant_id = $1;
     """, assistant_id)
@@ -124,7 +124,7 @@ async def fetch_assistant_by_id(assistant_id):
             "assistant_id": row["assistant_id"],
             "guild_id": row["guild_id"],
             "assistant_name": row["assistant_name"],
-            "assistant_prompt": row["assistant_prompt"],
+            "assistant_instruction": row["assistant_instruction"],
             "assistant_thread_id": row["assistant_thread_id"],
             "assistant_channel": row["assistant_channel"]
         }
