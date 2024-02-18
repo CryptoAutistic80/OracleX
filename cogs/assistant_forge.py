@@ -44,7 +44,12 @@ class AssistantForge(commands.Cog):
 
     @staff.subcommand(name="create_qa_assistant", description="Create a QA assistant for the server.")
     @application_checks.has_permissions(administrator=True)
-    async def create_qa_assistant(self, inter: nextcord.Interaction):
+    async def create_qa_assistant(
+        self, 
+        inter: nextcord.Interaction, 
+        assistant_name: str = nextcord.SlashOption(description="Name of the assistant"), 
+        channel: nextcord.TextChannel = nextcord.SlashOption(description="Select the channel where the assistant will operate")
+    ):
         guild_id = inter.guild.id
 
         # Initial defer to give more time for processing
@@ -71,6 +76,8 @@ class AssistantForge(commands.Cog):
                 await inter.followup.send("An error occurred while attempting to create a thread.", ephemeral=True)
         else:
             await inter.followup.send("This command can only be used in text channels.", ephemeral=True)
+
+        # Here, assistant_name and channel are now available to be used for any purpose, including database operations, at the end of the command.
 
 def setup(bot):
     bot.add_cog(AssistantForge(bot))
